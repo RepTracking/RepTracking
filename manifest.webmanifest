@@ -1,6 +1,6 @@
 {
-  "name": "Gym Timer",
-  "short_name": "Gym Timer",
+  "name": "RepTracking",
+  "short_name": "RepTracking",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#101214",
