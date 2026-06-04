@@ -1,6 +1,4 @@
 const STORAGE_KEY = "gym-timer-session-v1";
-const ringLength = 333;
-
 const state = {
   sets: [],
   timer: {
@@ -22,6 +20,8 @@ const els = {
   minutesInput: document.querySelector("#minutesInput"),
   secondsInput: document.querySelector("#secondsInput"),
   presetButtons: document.querySelectorAll("[data-rest-preset]"),
+  stepButtons: document.querySelectorAll("[data-step-target]"),
+  timerAdjustButtons: document.querySelectorAll("[data-timer-adjust]"),
   completeSet: document.querySelector("#completeSet"),
   toggleTimer: document.querySelector("#toggleTimer"),
   skipTimer: document.querySelector("#skipTimer"),
@@ -29,7 +29,11 @@ const els = {
   clearHistory: document.querySelector("#clearHistory"),
   timerLabel: document.querySelector("#timerLabel"),
   timeRemaining: document.querySelector("#timeRemaining"),
-  ringProgress: document.querySelector("#ringProgress"),
+  timerProgress: document.querySelector("#timerProgress"),
+  nextSetNumber: document.querySelector("#nextSetNumber"),
+  logSetDetail: document.querySelector("#logSetDetail"),
+  sessionDate: document.querySelector("#sessionDate"),
+  toast: document.querySelector("#toast"),
   setCount: document.querySelector("#setCount"),
   totalVolume: document.querySelector("#totalVolume"),
   restUsed: document.querySelector("#restUsed"),
@@ -96,7 +100,7 @@ function updateTimerFromInputs() {
   renderPresetState();
 }
 
-function startTimer(duration = getRestDuration()) {
+function startTimer(duration = state.timer.remaining || getRestDuration()) {
   stopInterval();
   state.timer.duration = duration;
   state.timer.remaining = duration;
@@ -145,6 +149,20 @@ function skipTimer() {
   renderTimer();
 }
 
+function adjustTimer(amount) {
+  const nextRemaining = Math.max(1, state.timer.remaining + amount);
+  if (state.timer.isRunning) {
+    state.timer.duration = Math.max(state.timer.duration, nextRemaining);
+    state.timer.remaining = nextRemaining;
+    state.timer.startedAt = Date.now() - (state.timer.duration - nextRemaining) * 1000;
+    if (state.timer.isPaused) state.timer.pausedAt = Date.now();
+  } else {
+    state.timer.duration = nextRemaining;
+    state.timer.remaining = nextRemaining;
+  }
+  renderTimer();
+}
+
 function stopInterval() {
   if (state.timer.intervalId) {
     window.clearInterval(state.timer.intervalId);
@@ -180,12 +198,14 @@ function logSet() {
   startTimer(rest);
   persist();
   renderSession();
+  showToast(`Set ${state.sets.length} logged`);
 }
 
 function clearHistory() {
   state.sets = [];
   persist();
   renderSession();
+  showToast("Sets cleared");
 }
 
 function resetSession() {
@@ -196,25 +216,24 @@ function resetSession() {
 function renderTimer() {
   const { duration, remaining, isRunning, isPaused } = state.timer;
   const progress = duration > 0 ? remaining / duration : 0;
-  const dashOffset = ringLength - ringLength * progress;
 
   els.timeRemaining.textContent = formatTime(remaining);
-  els.ringProgress.style.strokeDashoffset = String(dashOffset);
+  els.timerProgress.style.transform = `scaleX(${progress})`;
   els.app.classList.toggle("is-resting", isRunning && !isPaused);
   els.app.classList.toggle("is-paused", isPaused);
 
   if (isPaused) {
     els.timerLabel.textContent = "Paused";
-    els.toggleTimer.textContent = "Resume";
+    els.toggleTimer.textContent = "Resume rest";
   } else if (isRunning) {
-    els.timerLabel.textContent = "Resting";
+    els.timerLabel.textContent = "Resting now";
     els.toggleTimer.textContent = "Pause";
   } else if (remaining === 0) {
-    els.timerLabel.textContent = "Next Set";
-    els.toggleTimer.textContent = "Start Rest";
+    els.timerLabel.textContent = "Rest complete";
+    els.toggleTimer.textContent = "Start rest";
   } else {
-    els.timerLabel.textContent = "Ready";
-    els.toggleTimer.textContent = "Start Rest";
+    els.timerLabel.textContent = "Ready for a set";
+    els.toggleTimer.textContent = "Start rest";
   }
 }
 
@@ -227,6 +246,7 @@ function renderSession() {
   els.totalVolume.textContent = new Intl.NumberFormat().format(volume);
   els.restUsed.textContent = formatTime(restTotal);
   els.emptyState.hidden = state.sets.length > 0;
+  els.nextSetNumber.textContent = String(state.sets.length + 1);
 
   els.setList.innerHTML = state.sets
     .map((set, index) => {
@@ -236,16 +256,23 @@ function renderSession() {
       });
       return `
         <li>
-          <span class="set-index">${state.sets.length - index}</span>
+          <span class="set-index">${String(state.sets.length - index).padStart(2, "0")}</span>
           <span class="set-main">
             <strong>${escapeHtml(set.exercise)}</strong>
             <span>${set.reps} reps - ${set.weight} lb - ${time}</span>
           </span>
           <span class="set-rest">${formatTime(set.rest)}</span>
+          <button class="delete-set" type="button" data-delete-set="${set.id}" aria-label="Delete set">&times;</button>
         </li>
       `;
     })
     .join("");
+}
+
+function renderLogDetail() {
+  const reps = clampNumber(els.repsInput.value, 1, 999, 1);
+  const weight = clampNumber(els.weightInput.value, 0, 9999, 0);
+  els.logSetDetail.textContent = `${reps} reps at ${weight} lb`;
 }
 
 function renderPresetState() {
@@ -266,6 +293,30 @@ function setRestDuration(totalSeconds) {
 
 function signalRestComplete() {
   if ("vibrate" in navigator) navigator.vibrate([160, 80, 160]);
+  showToast("Rest complete. Your next set is ready.");
+}
+
+let toastTimer;
+function showToast(message) {
+  window.clearTimeout(toastTimer);
+  els.toast.textContent = message;
+  els.toast.classList.add("is-visible");
+  toastTimer = window.setTimeout(() => els.toast.classList.remove("is-visible"), 2200);
+}
+
+function stepInput(targetId, amount) {
+  const input = document.querySelector(`#${targetId}`);
+  const min = Number(input.min || 0);
+  const max = Number(input.max || Number.MAX_SAFE_INTEGER);
+  input.value = String(clampNumber(Number(input.value) + amount, min, max, min));
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function deleteSet(id) {
+  state.sets = state.sets.filter((set) => set.id !== id);
+  persist();
+  renderSession();
+  showToast("Set removed");
 }
 
 function escapeHtml(value) {
@@ -297,7 +348,10 @@ function bindEvents() {
       updateTimerFromInputs();
       persist();
     });
-    input.addEventListener("input", persist);
+    input.addEventListener("input", () => {
+      persist();
+      renderLogDetail();
+    });
   });
 
   [els.minutesInput, els.secondsInput].forEach((input) => {
@@ -307,9 +361,28 @@ function bindEvents() {
   els.presetButtons.forEach((button) => {
     button.addEventListener("click", () => setRestDuration(Number(button.dataset.restPreset)));
   });
+
+  els.stepButtons.forEach((button) => {
+    button.addEventListener("click", () => stepInput(button.dataset.stepTarget, Number(button.dataset.stepAmount)));
+  });
+
+  els.timerAdjustButtons.forEach((button) => {
+    button.addEventListener("click", () => adjustTimer(Number(button.dataset.timerAdjust)));
+  });
+
+  els.setList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-set]");
+    if (button) deleteSet(button.dataset.deleteSet);
+  });
 }
 
 restore();
 bindEvents();
 updateTimerFromInputs();
 renderSession();
+renderLogDetail();
+els.sessionDate.textContent = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+}).format(new Date());

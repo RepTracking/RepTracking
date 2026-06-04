@@ -3,7 +3,7 @@
   "short_name": "RepTracking",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#101214",
-  "theme_color": "#121417",
+  "background_color": "#f1f0eb",
+  "theme_color": "#f1f0eb",
   "description": "Track workout sets and rest time between sets."
 }

@@ -2,111 +2,119 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#121417" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f1f0eb" />
     <title>RepTracking</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
-      <section class="timer-panel" aria-labelledby="app-title">
-        <div class="topbar">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">R</span>
           <div>
-            <p class="eyebrow">Today</p>
-            <h1 id="app-title">RepTracking</h1>
+            <h1>RepTracking</h1>
+            <p id="sessionDate">Today's workout</p>
+          </div>
         </div>
-        <button class="icon-button" id="resetSession" type="button" aria-label="Reset session" title="Reset session">
-          <span aria-hidden="true">Reset</span>
-        </button>
-      </div>
+        <button class="quiet-button" id="resetSession" type="button">Reset</button>
+      </header>
 
-        <div class="timer-card" aria-live="polite">
-          <div class="timer-ring">
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <circle class="ring-track" cx="60" cy="60" r="53"></circle>
-              <circle class="ring-progress" id="ringProgress" cx="60" cy="60" r="53"></circle>
-            </svg>
-            <div class="timer-readout">
-              <span id="timerLabel">Ready</span>
-              <strong id="timeRemaining">00:00</strong>
-            </div>
-          </div>
-
-          <div class="timer-actions">
-            <button class="primary-action" id="completeSet" type="button">Log Set</button>
-            <button class="secondary-action" id="toggleTimer" type="button">Start Rest</button>
-            <button class="secondary-action" id="skipTimer" type="button">Skip</button>
-          </div>
+      <section class="timer-stage" aria-label="Rest timer" aria-live="polite">
+        <div class="timer-meta">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="timerLabel">Ready for a set</span>
+        </div>
+        <strong id="timeRemaining">1:30</strong>
+        <div class="timer-track" aria-hidden="true">
+          <span id="timerProgress"></span>
+        </div>
+        <div class="timer-adjustments" aria-label="Adjust rest timer">
+          <button type="button" data-timer-adjust="-15">-15s</button>
+          <button class="timer-toggle" id="toggleTimer" type="button">Start rest</button>
+          <button type="button" data-timer-adjust="15">+15s</button>
         </div>
       </section>
 
-      <section class="input-panel" aria-label="Workout controls">
-        <div class="field-group">
-          <label for="exerciseName">Exercise</label>
-          <input id="exerciseName" type="text" maxlength="36" value="Bench Press" autocomplete="off" />
-        </div>
-
-        <div class="metrics-grid">
-          <label class="number-field" for="repsInput">
-            <span>Reps</span>
-            <input id="repsInput" type="number" inputmode="numeric" min="1" max="999" value="8" />
-          </label>
-          <label class="number-field" for="weightInput">
-            <span>Weight</span>
-            <input id="weightInput" type="number" inputmode="decimal" min="0" max="9999" step="0.5" value="135" />
-          </label>
-        </div>
-
-        <div class="rest-card">
+      <section class="next-set" aria-labelledby="next-set-title">
+        <div class="section-heading">
           <div>
-            <p class="section-label">Rest Time</p>
-            <p class="hint">Set minutes and seconds for the break between sets.</p>
+            <p class="eyebrow">Up next</p>
+            <h2 id="next-set-title">Set <span id="nextSetNumber">1</span></h2>
+          </div>
+          <button class="quiet-button" id="skipTimer" type="button">Clear timer</button>
+        </div>
+
+        <label class="exercise-field" for="exerciseName">
+          <span>Exercise</span>
+          <input id="exerciseName" type="text" maxlength="36" value="Bench Press" autocomplete="off" />
+        </label>
+
+        <div class="stepper-grid">
+          <div class="stepper">
+            <span class="stepper-label">Reps</span>
+            <div class="stepper-control">
+              <button type="button" data-step-target="repsInput" data-step-amount="-1" aria-label="Decrease reps">-</button>
+              <input id="repsInput" aria-label="Reps" type="number" inputmode="numeric" min="1" max="999" value="8" />
+              <button type="button" data-step-target="repsInput" data-step-amount="1" aria-label="Increase reps">+</button>
+            </div>
+          </div>
+          <div class="stepper">
+            <span class="stepper-label">Weight <small>lb</small></span>
+            <div class="stepper-control">
+              <button type="button" data-step-target="weightInput" data-step-amount="-5" aria-label="Decrease weight">-</button>
+              <input id="weightInput" aria-label="Weight" type="number" inputmode="decimal" min="0" max="9999" step="0.5" value="135" />
+              <button type="button" data-step-target="weightInput" data-step-amount="5" aria-label="Increase weight">+</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="log-button" id="completeSet" type="button">
+          <span>Log set</span>
+          <span id="logSetDetail">8 reps at 135 lb</span>
+        </button>
+      </section>
+
+      <section class="rest-settings" aria-labelledby="rest-title">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">After each set</p>
+            <h2 id="rest-title">Rest duration</h2>
           </div>
           <div class="rest-inputs">
-            <label for="minutesInput">
-              <span>Min</span>
-              <input id="minutesInput" type="number" inputmode="numeric" min="0" max="59" value="1" />
-            </label>
-            <label for="secondsInput">
-              <span>Sec</span>
-              <input id="secondsInput" type="number" inputmode="numeric" min="0" max="59" value="30" />
-            </label>
+            <label for="minutesInput"><input id="minutesInput" type="number" inputmode="numeric" min="0" max="59" value="1" /><span>min</span></label>
+            <span>:</span>
+            <label for="secondsInput"><input id="secondsInput" type="number" inputmode="numeric" min="0" max="59" value="30" /><span>sec</span></label>
           </div>
         </div>
         <div class="preset-row" aria-label="Rest presets">
-          <button type="button" data-rest-preset="30">30s</button>
-          <button type="button" data-rest-preset="60">1m</button>
-          <button type="button" data-rest-preset="90">1m 30s</button>
-          <button type="button" data-rest-preset="120">2m</button>
+          <button type="button" data-rest-preset="30">30 sec</button>
+          <button type="button" data-rest-preset="60">1 min</button>
+          <button type="button" data-rest-preset="90">1:30</button>
+          <button type="button" data-rest-preset="120">2 min</button>
         </div>
       </section>
 
-      <section class="session-panel" aria-label="Session summary">
-        <div class="summary-row">
-          <div>
-            <span>Total Sets</span>
-            <strong id="setCount">0</strong>
-          </div>
-          <div>
-            <span>Total Volume</span>
-            <strong id="totalVolume">0</strong>
-          </div>
-          <div>
-            <span>Rest Used</span>
-            <strong id="restUsed">0:00</strong>
-          </div>
+      <section class="session-panel" aria-labelledby="history-title">
+        <div class="session-stats">
+          <div><strong id="setCount">0</strong><span>sets</span></div>
+          <div><strong id="totalVolume">0</strong><span>volume</span></div>
+          <div><strong id="restUsed">0:00</strong><span>rest</span></div>
         </div>
-
-        <div class="history-header">
-          <h2>Sets</h2>
-          <button id="clearHistory" type="button">Clear</button>
+        <div class="section-heading compact history-heading">
+          <h2 id="history-title">Session</h2>
+          <button class="quiet-button" id="clearHistory" type="button">Clear sets</button>
         </div>
         <ol class="set-list" id="setList"></ol>
-        <p class="empty-state" id="emptyState">Log your first set to start the session.</p>
+        <div class="empty-state" id="emptyState">
+          <span>01</span>
+          <p>Your first set will appear here.</p>
+        </div>
       </section>
     </main>
 
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>
 </html>
